@@ -1,7 +1,12 @@
 // Custom mini-golf physics.
 // A sphere is moved in small substeps against static triangles, primitive
 // solids and kinematic (animated) bodies. Contacts are resolved deepest-first
-// and static geometry always wins, so the ball can never pass through a wall.
+// and static geometry is resolved last. In normal play the per-substep travel
+// is kept well under the ball radius, so the ball stays out of walls. The one
+// residual escape case is a very fast kinematic body that deeply overlaps the
+// ball within a single step and shoves it clear behind a thin one-sided face;
+// movers are therefore kept slow relative to the step, and `verify.mjs` fuzzes
+// every hole to confirm the ball never ends up inside solid geometry.
 import { Vector3, Quaternion, Matrix4 } from 'three';
 
 export const BALL_R = 0.1;
@@ -433,10 +438,16 @@ export class World {
                 const w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
                 qx = bx + (cx - bx) * w; qy = by + (cy - by) * w; qz = bz + (cz - bz) * w;
               } else {
-                const den = 1 / (va + vb + vc);
-                const v = vb * den, w = vc * den;
-                qx = ax + abx * v + acx * w; qy = ay + aby * v + acy * w; qz = az + abz * v + acz * w;
-                face = true;
+                const s = va + vb + vc;
+                if (s < 1e-12) {
+                  // near-degenerate sliver: fall back to vertex a so den can't blow up
+                  qx = ax; qy = ay; qz = az;
+                } else {
+                  const den = 1 / s;
+                  const v = vb * den, w = vc * den;
+                  qx = ax + abx * v + acx * w; qy = ay + aby * v + acy * w; qz = az + abz * v + acz * w;
+                  face = true;
+                }
               }
             }
           }
@@ -665,6 +676,14 @@ export class World {
     ball.ox = ball.px; ball.oy = ball.py; ball.oz = ball.pz;
     if (ball.hazard) return;
 
+    // Numerical safety: if anything ever blows up to NaN/Infinity, stop the ball
+    // rather than silently soft-locking (n = ceil(NaN) would skip integration).
+    if (!Number.isFinite(ball.px + ball.py + ball.pz + ball.vx + ball.vy + ball.vz)) {
+      ball.vx = ball.vy = ball.vz = 0;
+      ball.stopped = true;
+      return;
+    }
+
     if (ball.rider) {
       const b = ball.rider.body, l = ball.rider.l;
       const e = b.mat.elements;
@@ -674,6 +693,14 @@ export class World {
       b.velAt(ball.px, ball.py, ball.pz, dt);
       ball.gsx = oVx; ball.gsy = oVy; ball.gsz = oVz;
       ball.vx = ball.vy = ball.vz = 0;
+      // A rider skips the per-substep hazard/killY tests, so a support that
+      // carries it below the kill plane would otherwise freeze it out of bounds.
+      if (ball.py < this.killY && !ball.holed) {
+        ball.rider = null;
+        ball.hazard = this.killType;
+        this.events.push({ type: 'hazard', kind: this.killType, x: ball.px, y: ball.py, z: ball.pz });
+        return;
+      }
       this._wakeCheck(ball, dt, b);
       return;
     }

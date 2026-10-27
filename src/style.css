@@ -438,5 +438,12 @@ button { font-family: inherit; cursor: pointer; }
   .btn { padding: 0.5em 1.4em; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .logo-main span, .logo-main .ball-o, .skip, #power.max { animation: none; }
+  .logo-main span, .logo-main .ball-o, .skip, #power.max,
+  .banner.in .banner-main, .banner.ace .banner-main, .banner.in .banner-sub,
+  .foot-item.gold, #hud-strokes.pop {
+    animation: none !important;
+  }
+  /* keep the end states visible without the motion */
+  .banner.in .banner-main { transform: scale(1) rotate(-3deg); }
+  .banner.in .banner-sub { opacity: 1; }
 }

@@ -29,6 +29,7 @@ const _v1 = new THREE.Vector3();
 const _v2 = new THREE.Vector3();
 const _v3 = new THREE.Vector3();
 const _q1 = new THREE.Quaternion();
+const _q2 = new THREE.Quaternion();
 const _m1 = new THREE.Matrix4();
 const _e1 = new THREE.Euler();
 const UP = new THREE.Vector3(0, 1, 0);
@@ -294,13 +295,20 @@ export class Game {
 
     const release = (e) => {
       if (!this.dragging) return;
+      // Only the pointer that started the drag may end it, so a second finger
+      // or stray stylus tap can't cut the shot short or fire it early.
+      if (this.activePointer !== undefined && e.pointerId !== this.activePointer) return;
       this.dragging = false;
+      this.activePointer = undefined;
       if (this.paused || this.state !== 'aim') { this.power = 0; return; }
       if (this.power >= 0.03) this.beginSwing(this.power);
       this.power = 0;
     };
     window.addEventListener('pointerup', release);
-    window.addEventListener('pointercancel', () => { this.dragging = false; this.power = 0; });
+    window.addEventListener('pointercancel', (e) => {
+      if (this.activePointer !== undefined && e.pointerId !== this.activePointer) return;
+      this.dragging = false; this.power = 0; this.activePointer = undefined;
+    });
 
     document.addEventListener('pointerlockchange', () => {
       const locked = document.pointerLockElement === c;
@@ -357,12 +365,14 @@ export class Game {
     this.dragging = false;
     this.power = 0;
     this.releasePointer();
+    this.audio.suspend();
     this.ui.showPause();
   }
 
   resume() {
     if (!this.paused) return;
     this.paused = false;
+    this.audio.resume();
     this.ui.hidePause();
     this.ui.hide(this.ui.select);
   }
@@ -420,6 +430,7 @@ export class Game {
   restartHole() {
     if (this.state === 'menu' || this.state === 'card') return;
     this.paused = false;
+    this.celebration = null; // clear any in-progress win celebration (e.g. R during 'holed')
     this.ui.hidePause();
     this.ui.hideBanner();
     this.resetBall();
@@ -609,6 +620,7 @@ export class Game {
     this.stateT = 0;
     this.dragging = false;
     this.power = 0;
+    this.keyTurn = 0; // drop any arrow key held through the previous shot
     this.camFrom.pos.copy(this.camera.position);
     this.camFrom.quat.copy(this.camera.quaternion);
     this.camBlend = snap ? 0.35 : 0;
@@ -662,7 +674,7 @@ export class Game {
     const dx = Math.sin(this.aimYaw), dz = -Math.cos(this.aimYaw);
     if (!this.ball.rider) this.safe = [this.ball.px, this.ball.py, this.ball.pz];
     this.world.shoot(this.ball, dx, dz, powerToSpeed(p));
-    this.strokes++;
+    this.strokes = Math.min(STROKE_CAP, this.strokes + 1);
     this.shotsThisSession++;
     this.updateHudScore();
     this.audio.putt(p);
@@ -940,10 +952,12 @@ export class Game {
     // blend into the first-person pose at the end
     const blend = smoothstep(0.78, 1.0, k);
     if (blend > 0) {
-      const ap = _v3, aq = new THREE.Quaternion();
-      this.aimPose(ap, aq);
-      pos.lerp(ap, blend);
-      _q1.slerp(aq, blend);
+      // aimPose() writes _v1/_v2 internally, which alias pos/look here, so grab
+      // the flyover position first, then blend it toward the aim pose.
+      const fx = pos.x, fy = pos.y, fz = pos.z;
+      this.aimPose(_v3, _q2);
+      pos.set(lerp(fx, _v3.x, blend), lerp(fy, _v3.y, blend), lerp(fz, _v3.z, blend));
+      _q1.slerp(_q2, blend);
     }
     if (this.stateT < 0.05) {
       this.camera.position.copy(pos);

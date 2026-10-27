@@ -145,7 +145,7 @@ vec3 applyPattern(vec3 base, vec3 wp, vec3 op, inout vec3 glow) {
     base *= 1.0 - 0.3 * riv * clamp(1.0 - fwidth(mp.x) * 6.0, 0.0, 1.0);
     base *= 0.95 + 0.08 * hash21(floor(mp));
   #elif PATTERN == 9
-    vec3 d = normalize(op);
+    vec3 d = normalize(op + 1e-6); // guard normalize(0) at the object origin
     float band = smoothstep(0.16, 0.2, abs(d.y));
     float dots = smoothstep(0.93, 0.95, abs(d.x));
     base = mix(uGlowColor, base, band);

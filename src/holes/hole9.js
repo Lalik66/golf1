@@ -39,6 +39,10 @@ export default function build(opts = {}) {
     clouds: 0, stars: 1.3, nebula: 0.55, nebulaA: 0xc23b4a, nebulaB: 0xe8741a,
     ambient: 'space', bloom: 0.5, bloomThreshold: 0.9, wind: 0,
   });
+  // Load-bearing tuning: completing this hole relies on the ballistic launch off
+  // the ramp clearing the void gap, which depends on this gravity together with
+  // the booster speeds below. Changing either can make the hole uncompletable —
+  // re-run `npm run verify -- 9` after any change here.
   b.world.gravity = 14;
   b.world.killY = -5;
   b.world.killType = 'void';

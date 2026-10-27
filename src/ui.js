@@ -60,7 +60,7 @@ export class UI {
         </div>
         <div class="hud-mid">
           <div class="stat"><span class="k">PAR</span><span class="v" id="hud-par">3</span></div>
-          <div class="stat big"><span class="k">STROKES</span><span class="v" id="hud-strokes">0</span></div>
+          <div class="stat big"><span class="k">STROKES</span><span class="v" id="hud-strokes" aria-live="polite">0</span></div>
           <div class="stat"><span class="k">TOTAL</span><span class="v" id="hud-total">E</span></div>
         </div>
         <div class="hud-right">
@@ -74,10 +74,10 @@ export class UI {
           <div class="power-val" id="power-val">0%</div>
         </div>
         <div id="hint" class="hidden"></div>
-        <div id="toast" class="hidden"></div>
+        <div id="toast" class="hidden" role="status" aria-live="assertive" aria-atomic="true"></div>
       </div>
 
-      <div id="banner" class="hidden"><div class="banner-main" id="banner-main"></div><div class="banner-sub" id="banner-sub"></div></div>
+      <div id="banner" class="hidden" role="status" aria-live="assertive" aria-atomic="true"><div class="banner-main" id="banner-main"></div><div class="banner-sub" id="banner-sub"></div></div>
       <div id="intro" class="hidden">
         <div class="intro-card">
           <div class="intro-num" id="intro-num">HOLE 1</div>
@@ -110,8 +110,8 @@ export class UI {
         </div>
       </div>
 
-      <div id="select" class="layer screen hidden">
-        <div class="panel wide">
+      <div id="select" class="layer screen hidden" role="dialog" aria-modal="true" aria-label="Choose a hole">
+        <div class="panel wide" tabindex="-1">
           <h2>Choose a hole</h2>
           <div class="select-note" id="select-note">Jump straight to any hole. Play on from there with Next hole.</div>
           <div class="grid" id="select-grid"></div>
@@ -119,8 +119,8 @@ export class UI {
         </div>
       </div>
 
-      <div id="help" class="layer screen hidden">
-        <div class="panel">
+      <div id="help" class="layer screen hidden" role="dialog" aria-modal="true" aria-label="How to play">
+        <div class="panel" tabindex="-1">
           <h2>How to play</h2>
           <ul class="help-list">
             <li><b>Aim</b> Move the mouse to look around and line up your shot.</li>
@@ -134,8 +134,8 @@ export class UI {
         </div>
       </div>
 
-      <div id="pause" class="layer screen hidden">
-        <div class="panel">
+      <div id="pause" class="layer screen hidden" role="dialog" aria-modal="true" aria-label="Paused">
+        <div class="panel" tabindex="-1">
           <h2>Paused</h2>
           <div class="menu-buttons">
             <button class="btn primary" id="p-resume">Resume</button>
@@ -147,8 +147,8 @@ export class UI {
         </div>
       </div>
 
-      <div id="card" class="layer screen hidden">
-        <div class="panel wide card-panel">
+      <div id="card" class="layer screen hidden" role="dialog" aria-modal="true" aria-label="Scorecard">
+        <div class="panel wide card-panel" tabindex="-1">
           <div class="card-head">
             <div class="card-title" id="card-title">BIRDIE!</div>
             <div class="card-sub" id="card-sub"></div>
@@ -198,6 +198,12 @@ export class UI {
 
   hide(e) { e.classList.add('hidden'); }
 
+  /** Move focus into a freshly-opened dialog so keyboard/AT users land inside it. */
+  focus(screen) {
+    const p = screen.querySelector('.panel');
+    if (p) { try { p.focus({ preventScroll: true }); } catch (e) { p.focus(); } }
+  }
+
   setHoles(list) { this.holes = list; }
 
   // ------------------------------------------------------------ menu
@@ -232,6 +238,7 @@ export class UI {
       c.addEventListener('click', () => { this.h.click(); this.h.practice(i); });
       grid.appendChild(c);
     });
+    this.focus(this.select);
   }
 
   setMuted(m) {
@@ -313,7 +320,7 @@ export class UI {
 
   hideBanner() { this.banner.className = 'hidden'; }
 
-  showPause() { this.show(this.pause); }
+  showPause() { this.show(this.pause); this.focus(this.pause); }
 
   hidePause() { this.hide(this.pause); }
 
@@ -371,6 +378,7 @@ export class UI {
     this.card.classList.remove('in');
     void this.card.offsetWidth;
     this.card.classList.add('in');
+    this.focus(this.card);
   }
 
   hideCard() { this.hide(this.card); }

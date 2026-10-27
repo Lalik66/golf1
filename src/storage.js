@@ -21,6 +21,14 @@ export class Storage {
       // storage unavailable (private mode): keep defaults in memory
     }
     if (!Array.isArray(this.data.bestHoles)) this.data.bestHoles = [];
+    // Coerce corrupted/hand-edited values so numeric comparisons stay sound.
+    const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+    this.data.bestTotal = num(this.data.bestTotal);
+    if (!Array.isArray(this.data.bestRound)) this.data.bestRound = null;
+    this.data.bestHoles = this.data.bestHoles.map((v) => {
+      const n = num(v);
+      return n === null ? undefined : n;
+    });
   }
 
   save() {

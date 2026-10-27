@@ -41,6 +41,16 @@ export class AudioEngine {
     if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 0.85, this.ctx.currentTime, 0.03);
   }
 
+  /** Halt the looping ambience and all scheduled sound while paused. */
+  suspend() {
+    if (this.ctx && this.ctx.state === 'running') this.ctx.suspend().catch(() => {});
+  }
+
+  /** Resume audio. Called from the resume button, i.e. a user gesture. */
+  resume() {
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+  }
+
   get now() { return this.ctx.currentTime; }
 
   _osc(type, freq, t0, dur, gain, o = {}) {

@@ -9,6 +9,7 @@ export class Particles {
   constructor(max = 1500, additive = false) {
     this.max = max;
     this.n = 0;
+    this.head = 0; // recycle cursor used once the pool is full
     this.pos = new Float32Array(max * 3);
     this.vel = new Float32Array(max * 3);
     this.col = new Float32Array(max * 4);
@@ -95,7 +96,7 @@ export class Particles {
     this.mat.uniforms.uScale.value = heightPx * 0.5 / Math.tan((fovDeg * Math.PI) / 360);
   }
 
-  clear() { this.n = 0; this.geo.setDrawRange(0, 0); }
+  clear() { this.n = 0; this.head = 0; this.geo.setDrawRange(0, 0); }
 
   /**
    * o: x,y,z, vx,vy,vz, life, size, color (hex), alpha, gravity, drag, grow, floor, shape, bright, spin
@@ -103,8 +104,9 @@ export class Particles {
   emit(o) {
     let i = this.n;
     if (i >= this.max) {
-      // overwrite the oldest-looking one
-      i = Math.floor(Math.random() * this.max);
+      // pool full: recycle in insertion order (oldest first) to avoid popping
+      i = this.head;
+      this.head = (this.head + 1) % this.max;
     } else {
       this.n++;
     }

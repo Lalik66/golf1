@@ -1072,7 +1072,12 @@ export class CourseBuilder {
       hole.dispose = () => {
         this.root.traverse((o) => {
           if (o.geometry) o.geometry.dispose();
-          if (o.material && o.material.isShaderMaterial) o.material.dispose();
+          const m = o.material;
+          if (!m) return;
+          // Only per-hole ShaderMaterials are disposed; cached toon materials are
+          // shared across holes and must not be. Handle material arrays too.
+          if (Array.isArray(m)) { for (const mm of m) if (mm && mm.isShaderMaterial) mm.dispose(); }
+          else if (m.isShaderMaterial) m.dispose();
         });
       };
       U.cup.value.set(this.info.cup[0], this.info.cup[1], this.info.cup[2], CUP_R);
